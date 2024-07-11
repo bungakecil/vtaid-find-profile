@@ -6,4 +6,6 @@ data class CreatorYouTubeChannelWithSampleMediaList(
 
     val creatorMediaList: List<CreatorMedia>,
 
+    val description: String?
+
 )
