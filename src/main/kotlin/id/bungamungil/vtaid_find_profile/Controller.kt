@@ -18,7 +18,7 @@ class Controller(
 ) {
 
     @PostMapping
-    fun findByYouTubeChannelIds(@RequestBody request: FindByYouTubeChannelIdsRequest): List<CreatorYouTubeChannelWithSampleMediaList> {
+    fun findByYouTubeChannelIds(@RequestBody request: FindByYouTubeChannelIdsRequest): List<Awardee> {
         val creatorYouTubeChannelList = creatorYouTubeChannelRepository.findCreatorYouTubeChannelsByIdCreatorPlatformIdIn(request.youTubeChannelIds)
         val creatorMediaList = creatorMediaRepository.findByCreatorPlatformIdIn(request.youTubeChannelIds)
         val uri = UriComponentsBuilder.fromUri(URI("https://youtube.googleapis.com/youtube/v3/channels"))
@@ -28,13 +28,26 @@ class Controller(
             .build()
             .toUri()
         val youTubeChannels = restTemplate.getForEntity(uri, YouTubeAPIChannels::class.java).body?.items
-        val response = ArrayList<CreatorYouTubeChannelWithSampleMediaList>()
+        val response = ArrayList<Awardee>()
         for (creatorYouTubeChannel in creatorYouTubeChannelList) {
+            val channelInfo = youTubeChannels
+                ?.firstOrNull { youTubeChannel -> youTubeChannel.id == creatorYouTubeChannel.id?.creatorPlatformId }
             response.add(
-                CreatorYouTubeChannelWithSampleMediaList(
-                    creatorYouTubeChannel,
-                    creatorMediaList.filter { creatorMedia -> creatorMedia.id?.creatorId == creatorYouTubeChannel.id?.creatorId }.take(2),
-                    youTubeChannels?.firstOrNull { youTubeChannel -> youTubeChannel.id == creatorYouTubeChannel.id?.creatorPlatformId }?.snippet?.description
+                Awardee(
+                    creatorYouTubeChannel.id?.creatorPlatformId,
+                    channelInfo?.snippet?.title,
+                    channelInfo?.snippet?.thumbnails?.default?.url,
+                    channelInfo?.snippet?.description,
+                    creatorMediaList.filter { creatorMedia -> creatorMedia.id?.creatorId == creatorYouTubeChannel.id?.creatorId }.take(2).map {
+                        Showcase(
+                            it.id?.mediaId,
+                            it.title,
+                            it.thumbnailUrl,
+                            "https://www.youtube.com/watch?v=" + it.id?.mediaId,
+                            null
+                        )
+                    },
+                    "https://pvc.moe/creator/p/" + creatorYouTubeChannel.anonId + "." + creatorYouTubeChannel.creatorName?.slugify()
                 )
             )
         }
